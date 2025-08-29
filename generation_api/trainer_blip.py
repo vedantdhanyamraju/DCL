@@ -135,17 +135,26 @@ class BaseTrainer(object):
         record_table.to_csv(record_path, index=False)
 
     def _prepare_device(self, n_gpu_use):
-        n_gpu = torch.cuda.device_count()
+        use_cuda = torch.cuda.is_available()
+        use_mps = torch.backends.mps.is_available()
+        n_gpu = torch.cuda.device_count() if use_cuda else 0
         if n_gpu_use > 0 and n_gpu == 0:
-            print("Warning: There\'s no GPU available on this machine," "training will be performed on CPU.")
+            print("Warning: There's no CUDA device available on this machine, training will be performed on CPU or MPS.")
             n_gpu_use = 0
         if n_gpu_use > n_gpu:
             print(
-                "Warning: The number of GPU\'s configured to use is {}, but only {} are available " "on this machine.".format(
+                "Warning: The number of GPU's configured to use is {}, but only {} are available on this machine.".format(
                     n_gpu_use, n_gpu))
             n_gpu_use = n_gpu
-        device = torch.device('cuda:0' if n_gpu_use > 0 else 'cpu')
-        list_ids = list(range(n_gpu_use))
+        if use_cuda and n_gpu_use > 0:
+            device = torch.device('cuda:0')
+            list_ids = list(range(n_gpu_use))
+        elif use_mps:
+            device = torch.device('mps')
+            list_ids = []
+        else:
+            device = torch.device('cpu')
+            list_ids = []
         return device, list_ids
 
     def _save_checkpoint(self, epoch, save_best=False):

@@ -51,7 +51,8 @@ class SmoothedValue(object):
         """
         if not is_dist_avail_and_initialized():
             return
-        t = torch.tensor([self.count, self.total], dtype=torch.float64, device='cuda')
+        device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+        t = torch.tensor([self.count, self.total], dtype=torch.float64, device=device)
         dist.barrier()
         dist.all_reduce(t)
         t = t.tolist()
@@ -149,8 +150,12 @@ class MetricLogger(object):
             'time: {time}',
             'data: {data}'
         ]
-        if torch.cuda.is_available():
+        use_cuda = torch.cuda.is_available()
+        use_mps = torch.backends.mps.is_available()
+        if use_cuda:
             log_msg.append('max mem: {memory:.0f}')
+        elif use_mps:
+            log_msg.append('max mem: N/A')
         log_msg = self.delimiter.join(log_msg)
         MB = 1024.0 * 1024.0
         for obj in iterable:
@@ -160,7 +165,7 @@ class MetricLogger(object):
             if i % print_freq == 0 or i == len(iterable) - 1:
                 eta_seconds = iter_time.global_avg * (len(iterable) - i)
                 eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
-                if torch.cuda.is_available():
+                if use_cuda:
                     print(log_msg.format(
                         i, len(iterable), eta=eta_string,
                         meters=str(self),
@@ -258,7 +263,10 @@ def init_distributed_mode(args):
         args.gpu = int(os.environ['LOCAL_RANK'])
     elif 'SLURM_PROCID' in os.environ:
         args.rank = int(os.environ['SLURM_PROCID'])
-        args.gpu = args.rank % torch.cuda.device_count()
+        if torch.cuda.is_available():
+            args.gpu = args.rank % torch.cuda.device_count()
+        else:
+            args.gpu = 0
     else:
         print('Not using distributed mode')
         args.distributed = False
@@ -266,8 +274,11 @@ def init_distributed_mode(args):
 
     args.distributed = True
 
-    torch.cuda.set_device(args.gpu)
-    args.dist_backend = 'nccl'
+    if torch.cuda.is_available():
+        torch.cuda.set_device(args.gpu)
+        args.dist_backend = 'nccl'
+    else:
+        args.dist_backend = 'gloo'
     print('| distributed init (rank {}, word {}): {}'.format(
         args.rank, args.world_size, args.dist_url), flush=True)
     torch.distributed.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
