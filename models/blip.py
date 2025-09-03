@@ -11,6 +11,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+import copy
 import os
 from urllib.parse import urlparse
 from timm.models.hub import download_cached_file
@@ -47,14 +48,16 @@ class BLIP_Decoder(nn.Module):
         self.tokenizer = tokenizer
         self.args = args
         self.prompt = prompt
-        
+
         if args.bert == 'base':
-            med_config = 'configs/med_config_blip.json'
+            med_config_path = 'configs/med_config_blip.json'
         elif args.bert == 'sci':
-            med_config = 'configs/med_config_sci.json'
+            med_config_path = 'configs/med_config_sci.json'
         elif args.bert == 'cli':
-            med_config = 'configs/med_config_cli.json'
-        med_config = BertConfig.from_json_file(med_config)
+            med_config_path = 'configs/med_config_cli.json'
+        else:
+            med_config_path = med_config
+        med_config = BertConfig.from_json_file(med_config_path)
         med_config.encoder_width = vision_width
         self.text_encoder = BertModel(config=med_config, add_pooling_layer=False)
 
@@ -63,8 +66,6 @@ class BLIP_Decoder(nn.Module):
         self.text_encoder.resize_token_embeddings(len(self.tokenizer))
         text_width = self.text_encoder.config.hidden_size
 
-        self.text_decoder = BertLMHeadModel(config=med_config)
-        
         self.vision_proj = nn.Linear(vision_width, 256)
         self.text_proj = nn.Linear(768, 256)
 
@@ -118,10 +119,10 @@ class BLIP_Decoder(nn.Module):
 
         self.queue_size = queue_size
         self.momentum = momentum
-        self.temp = nn.Parameter(0.07*torch.ones([]))   
-        
+        self.temp = nn.Parameter(0.07*torch.ones([]))
+
         # create the decoder
-        decoder_config = BertConfig.from_json_file(med_config)
+        decoder_config = copy.deepcopy(med_config)
         decoder_config.encoder_width = vision_width
         if args.bert == 'base':
             self.text_decoder = BertLMHeadModel.from_pretrained('bert-base-uncased',config=decoder_config)
