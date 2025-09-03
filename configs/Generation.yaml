@@ -16,6 +16,8 @@ embed_dim: 256
 temp: 0.07
 k_test: 128
 
+prompt: 'a picture of '
+
 alpha: 0.4
 distill: True
 warm_up: True
