@@ -65,7 +65,7 @@ class Tokenizer(object):
             .replace('2.', '').replace('3.', '').replace('4.', '').replace('5.', '') \
             .replace('1、', '').replace('2、', '').replace('3、', '').replace('4、', '') \
             .strip().lower()
-        sent_cleaner = lambda t: re.sub('[.,?;*!%^&_+():-\[\]{}]', '', t.replace('"', '').replace('/', '').
+        sent_cleaner = lambda t: re.sub(r'[.,?;*!%^&_+():-\[\]{}]', '', t.replace('"', '').replace('/', '').
                                         replace('\\', '').replace("'", '').strip().lower())
         # jieba cut the tokens
         tokens = [sent_cleaner(sent) for sent in jieba.lcut(report_cleaner(report)) if sent_cleaner(sent) != []]
