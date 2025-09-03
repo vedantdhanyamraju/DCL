@@ -5,7 +5,12 @@ image_root: '/export/share/datasets/vision/flickr30k/' #flickr30k-images/
 
 bert_config: 'configs/config_bert.json'
 
-image_res: 224
+image_size: 224          # or rename existing image_res
+vit: base                # {base|large}
+vit_grad_ckpt: false
+vit_ckpt_layer: 0
+prompt: "a picture of "
+
 batch_size_train: 1
 batch_size_test: 4
 
@@ -15,8 +20,6 @@ vision_width: 768
 embed_dim: 256
 temp: 0.07
 k_test: 128
-
-prompt: 'a picture of '
 
 alpha: 0.4
 distill: True
