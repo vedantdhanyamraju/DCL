@@ -114,7 +114,8 @@ class create_knowledge(nn.Module):
     @torch.no_grad()
     def _dequeue_and_enqueue(self, text_feat, knowledge):
         # gather keys before updating queue
-        if self.args.task == 'pretrain' or self.args.task == 'retrieval':
+        task = getattr(self.args, 'task', 'generation')
+        if task in ('pretrain', 'retrieval'):
             text_feats = concat_all_gather(text_feat)
             knowledge_input_ids = concat_all_gather(knowledge.input_ids)
             knowledge_attention_mask = concat_all_gather(knowledge.attention_mask)

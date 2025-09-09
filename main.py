@@ -34,7 +34,7 @@ def main(args, config):
     tokenizer.add_special_tokens({'additional_special_tokens': ['[ENC]']})
     tokenizer.enc_token_id = tokenizer.additional_special_tokens_ids[0]
     # tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
-    train_dataset, val_dataset, test_dataset = create_dataset('generation_%s'%args.dataset_name, args, config)
+    train_dataset, val_dataset, test_dataset = create_dataset(f'{args.task}_{args.dataset_name}', args, config)
     samplers = [None, None, None]
     train_dataloader, val_dataloader, test_dataloader = create_loader([train_dataset, val_dataset, test_dataset], samplers,
                                                             batch_size=[args.batch_size] * 3,
@@ -75,6 +75,7 @@ if __name__ == '__main__':
     parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
     parser.add_argument('--distributed', default=True, type=bool)
+    parser.add_argument('--task', default='generation', choices=['generation', 'pretrain', 'retrieval'], help='Training mode')
 
     parser.add_argument('--image_dir', type=str,
                         default='./dataset/iu_xray/images&./dataset/MIMIC-CXR/mimic_cxr/images',
