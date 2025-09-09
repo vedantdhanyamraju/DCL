@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import json
 import math
 import copy
+import logging
 from models.med import BertConfig, BertModel, BertLMHeadModel
 from medical_knowledge.SKG_knowledge import *
 
@@ -126,15 +127,31 @@ class create_knowledge(nn.Module):
 
         batch_size = text_feats.shape[0]
 
+        if self.queue_size % batch_size != 0:
+            logging.warning(
+                "queue_size %d is not divisible by batch_size %d; data will wrap around",
+                self.queue_size,
+                batch_size,
+            )
+
         ptr = int(self.queue_ptr)
-        assert self.queue_size % batch_size == 0  # for simplicity
+        end = ptr + batch_size
 
-        # replace the keys at ptr (dequeue and enqueue)
-        self.text_queue[:, ptr:ptr + batch_size] = text_feats.T
-        self.knowledge_input_ids_queue[ptr:ptr + batch_size] = knowledge_input_ids
-        self.knowledge_attention_mask_queue[ptr:ptr + batch_size] = knowledge_attention_mask
+        if end <= self.queue_size:
+            self.text_queue[:, ptr:end] = text_feats.T
+            self.knowledge_input_ids_queue[ptr:end] = knowledge_input_ids
+            self.knowledge_attention_mask_queue[ptr:end] = knowledge_attention_mask
+        else:
+            first_len = self.queue_size - ptr
+            self.text_queue[:, ptr:self.queue_size] = text_feats[:first_len].T
+            self.knowledge_input_ids_queue[ptr:self.queue_size] = knowledge_input_ids[:first_len]
+            self.knowledge_attention_mask_queue[ptr:self.queue_size] = knowledge_attention_mask[:first_len]
+            second_len = end - self.queue_size
+            self.text_queue[:, 0:second_len] = text_feats[first_len:].T
+            self.knowledge_input_ids_queue[0:second_len] = knowledge_input_ids[first_len:]
+            self.knowledge_attention_mask_queue[0:second_len] = knowledge_attention_mask[first_len:]
 
-        ptr = (ptr + batch_size) % self.queue_size  # move pointer
+        ptr = end % self.queue_size  # move pointer
 
         self.queue_ptr[0] = ptr
 
