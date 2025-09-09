@@ -334,19 +334,23 @@ class BLIP_Decoder(nn.Module):
         loss_irm = F.cross_entropy(vl_output, itm_labels)
         
         ##================= LM ========================##
-        text.input_ids[:,0] = self.tokenizer.bos_token_id
+        decoder_input_ids = text.input_ids.clone()
+        decoder_input_ids[:, 0] = self.tokenizer.bos_token_id
 
-        decoder_targets = text.input_ids.masked_fill(text.input_ids == self.tokenizer.pad_token_id, -100)
+        decoder_targets = decoder_input_ids.masked_fill(
+            decoder_input_ids == self.tokenizer.pad_token_id, -100
+        )
 
-        decoder_targets[:,:self.prompt_length] = -100
+        decoder_targets[:, : self.prompt_length] = -100
 
-        decoder_output = self.text_decoder(text.input_ids,
-                                           attention_mask = text.attention_mask,
-                                           encoder_hidden_states = image_embeds,
-                                           encoder_attention_mask = image_atts,
-                                           labels = decoder_targets,
-                                           return_dict = True,
-                                          )
+        decoder_output = self.text_decoder(
+            decoder_input_ids,
+            attention_mask=text.attention_mask,
+            encoder_hidden_states=image_embeds,
+            encoder_attention_mask=image_atts,
+            labels=decoder_targets,
+            return_dict=True,
+        )
 
 
         loss_lm = decoder_output.loss
