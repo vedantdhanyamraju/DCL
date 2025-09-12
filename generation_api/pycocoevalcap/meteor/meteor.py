@@ -8,30 +8,42 @@
 # To support Python 3
 
 import os
-import sys
 import subprocess
 import threading
+import shutil
 
 # Assumes meteor-1.5.jar is in the same directory as meteor.py.  Change as needed.
 METEOR_JAR = 'meteor-1.5.jar'
-# print METEOR_JAR
+JAR_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), METEOR_JAR)
+JAR_EXISTS = os.path.isfile(JAR_PATH)
 
 class Meteor:
 
     def __init__(self):
         self.meteor_cmd = ['java', '-jar', '-Xmx2G', METEOR_JAR, \
                 '-', '-', '-stdio', '-l', 'en', '-norm']
-        self.meteor_p = subprocess.Popen(self.meteor_cmd, \
-                cwd=os.path.dirname(os.path.abspath(__file__)), \
-                stdin=subprocess.PIPE, \
-                stdout=subprocess.PIPE, \
-                stderr=subprocess.PIPE,
-                universal_newlines = True,
-                bufsize = 1)
+        self.meteor_p = None
         # Used to guarantee thread safety
         self.lock = threading.Lock()
 
+    def _spawn(self):
+        if self.meteor_p is None:
+            if not JAR_EXISTS:
+                raise FileNotFoundError(f"METEOR jar not found at {JAR_PATH}")
+            if shutil.which('java') is None:
+                raise EnvironmentError('Java is not installed or not found in PATH')
+            self.meteor_p = subprocess.Popen(
+                self.meteor_cmd,
+                cwd=os.path.dirname(os.path.abspath(__file__)),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+                bufsize=1,
+            )
+
     def compute_score(self, gts, res):
+        self._spawn()
         assert(gts.keys() == res.keys())
         imgIds = gts.keys()
         scores = []
@@ -58,10 +70,12 @@ class Meteor:
         # SCORE ||| reference 1 words ||| reference n words ||| hypothesis words
         hypothesis_str = hypothesis_str.replace('|||','').replace('  ',' ')
         score_line = ' ||| '.join(('SCORE', ' ||| '.join(reference_list), hypothesis_str))
+        self._spawn()
         self.meteor_p.stdin.write('{}\n'.format(score_line))
         return self.meteor_p.stdout.readline().strip()
 
     def _score(self, hypothesis_str, reference_list):
+        self._spawn()
         self.lock.acquire()
         # SCORE ||| reference 1 words ||| reference n words ||| hypothesis words
         hypothesis_str = hypothesis_str.replace('|||','').replace('  ',' ')
@@ -79,8 +93,10 @@ class Meteor:
         return score
  
     def __del__(self):
-        self.lock.acquire()
-        self.meteor_p.stdin.close()
-        self.meteor_p.kill()
-        self.meteor_p.wait()
-        self.lock.release()
+        if getattr(self, 'lock', None) is not None:
+            self.lock.acquire()
+            if self.meteor_p is not None:
+                self.meteor_p.stdin.close()
+                self.meteor_p.kill()
+                self.meteor_p.wait()
+            self.lock.release()

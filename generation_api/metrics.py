@@ -1,5 +1,5 @@
 from .pycocoevalcap.bleu.bleu import Bleu
-from .pycocoevalcap.meteor import Meteor
+from .pycocoevalcap.meteor import Meteor, meteor
 from .pycocoevalcap.rouge import Rouge
 from .pycocoevalcap.cider import Cider
 
@@ -23,11 +23,10 @@ def compute_scores(gts, res):
     eval_res = {}
     # Compute score for each metric
     for scorer, method in scorers:
-        try:
-            score, scores = scorer.compute_score(gts, res, verbose=0)
-        except TypeError:
-            score, scores = scorer.compute_score(gts, res)
-        if type(method) == list:
+        if isinstance(scorer, Meteor) and not meteor.JAR_EXISTS:
+            continue  # skip METEOR when jar is missing
+        score, scores = scorer.compute_score(gts, res)
+        if isinstance(method, list):
             for sc, m in zip(score, method):
                 eval_res[m] = sc
         else:
