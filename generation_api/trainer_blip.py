@@ -109,7 +109,7 @@ class BaseTrainer(object):
 
     def _save_file(self, log):
         if not os.path.exists(self.args.record_dir):
-            os.mkdir(self.args.record_dir)
+            os.makedirs(self.args.record_dir, exist_ok=True)
         record_path = os.path.join(self.args.record_dir, self.args.dataset_name +'_'+self.args.save_dir.split('/')[2] +'.json')
         with open(record_path, 'w') as f:
             json.dump(log, f)
