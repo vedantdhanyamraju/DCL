@@ -424,11 +424,11 @@ class BLIP_Decoder(nn.Module):
 
         image_feat = F.normalize(self.vision_proj(image_embeds[:, 0, :]), dim=-1) # bs x 768
         
-        if not sample:
-            image_embeds = image_embeds.repeat_interleave(num_beams,dim=0)
-        
-        image_atts = torch.ones(image_embeds.size()[:-1],dtype=torch.long).to(image.device)
-        model_kwargs = {"encoder_hidden_states": image_embeds, "encoder_attention_mask":image_atts}
+        image_atts = torch.ones(image_embeds.size()[:-1], dtype=torch.long).to(image.device)
+        model_kwargs = {
+            "encoder_hidden_states": image_embeds,
+            "encoder_attention_mask": image_atts,
+        }
 
         prompt = [self.prompt] * image.size(0)
         input_ids = self.tokenizer(prompt, return_tensors="pt").input_ids.to(image.device)
