@@ -3,7 +3,7 @@ warnings.filterwarnings("ignore")
 
 from models.vit_blip import VisionTransformer, interpolate_pos_embed
 from models.med import BertConfig, BertModel, BertLMHeadModel
-from transformers import BertTokenizer, AutoTokenizer
+from transformers import BertTokenizer, AutoTokenizer, GenerationConfig
 import transformers
 transformers.logging.set_verbosity_error()
 
@@ -130,6 +130,9 @@ class BLIP_Decoder(nn.Module):
             self.text_decoder = BertLMHeadModel.from_pretrained('allenai/scibert_scivocab_uncased',config=decoder_config)
         elif args.bert == 'cli':
             self.text_decoder = BertLMHeadModel.from_pretrained('emilyalsentzer/Bio_ClinicalBERT',config=decoder_config)
+        self.text_decoder.generation_config = GenerationConfig.from_model_config(
+            decoder_config
+        )
         self.text_decoder.resize_token_embeddings(len(self.tokenizer))
         tie_encoder_decoder_weights(self.text_encoder,self.text_decoder.bert,'','/attention')
 
