@@ -110,7 +110,8 @@ class BaseTrainer(object):
     def _save_file(self, log):
         if not os.path.exists(self.args.record_dir):
             os.makedirs(self.args.record_dir, exist_ok=True)
-        record_path = os.path.join(self.args.record_dir, self.args.dataset_name +'_'+self.args.save_dir.split('/')[2] +'.json')
+        save_name = os.path.basename(os.path.normpath(self.args.save_dir))
+        record_path = os.path.join(self.args.record_dir, f"{self.args.dataset_name}_{save_name}.json")
         with open(record_path, 'w') as f:
             json.dump(log, f)
 
@@ -125,7 +126,8 @@ class BaseTrainer(object):
 
         if not os.path.exists(self.args.record_dir):
             os.makedirs(self.args.record_dir)
-        record_path = os.path.join(self.args.record_dir, self.args.dataset_name+'_'+self.args.save_dir.split('/')[2] +'.csv')
+        save_name = os.path.basename(os.path.normpath(self.args.save_dir))
+        record_path = os.path.join(self.args.record_dir, f"{self.args.dataset_name}_{save_name}.csv")
         if not os.path.exists(record_path):
             record_table = pd.DataFrame()
         else:
